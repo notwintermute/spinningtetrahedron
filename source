@@ -1,0 +1,203 @@
+import math
+import pygame
+import numpy as np
+rS = 700
+rX = rS
+rY = rS
+
+
+
+
+taX = 0
+taY = 0
+taZ = 0
+
+s = 300
+tCx = 0
+tCy = 0
+tCz = 0
+tCenter = np.array([0, 0, 0])
+
+A = np.array([tCx-s/2, tCy-(s/(2*math.sqrt(3))), tCz-(s*(math.sqrt(6)/12))])
+B = np.array([tCx+s/2, tCy-(s/(2*math.sqrt(3))), tCz-s*(math.sqrt(6)/12)])
+C = np.array([tCx, tCy+(s/math.sqrt(3)), tCz-s*(math.sqrt(6)/12)])
+D = np.array([tCx, tCy, tCz+s*((math.sqrt(6)/3)-(math.sqrt(6)/12))])
+
+count = 0
+
+cx,cy,cz = 0, 0, 100
+cCen = np.array([cx, cy, cz])
+cA =   np.array([cx-1, cy, cz])
+cB =   np.array([cx, cy, 1+cz])
+cP = [cCen, cA, cB]
+normlp = tCenter - cCen
+normlp = normlp/ np.linalg.norm(normlp)
+Scp = np.dot(normlp, -cP[0])
+print(normlp)
+
+c1 = (255, 255, 255)
+c2 = (255, 0, 0)
+c3 = (0, 255, 0)
+c4 = (0, 0, 255)
+cL = [c1, c2, c3, c4]
+
+
+def updateCnormal(x, y, z):
+    cC = np.array([x, y, z])
+
+    nmp = tCenter - cC
+    nmp = nmp / np.linalg.norm(nmp)
+    sp = np.dot(nmp, -cC)
+    return nmp, sp
+
+def dtr(a):
+    return (math.pi/180)*a
+
+
+def project(p):
+    dist = abs(np.dot(p, normlp) + Scp)
+    return p+dist*normlp
+
+
+def stc(inp):
+    sx = inp[0]-rX/2
+    sy = -(inp[1]-rY/2)
+    return sx, sy
+
+
+def cts(inp):
+    sx = inp[0]+rX/2
+    sy = (rY/2)-inp[1]
+    return sx, sy
+
+
+pygame.init()
+# initialize surface and start the main loop
+surface = pygame.display.set_mode((rX, rY))
+pygame.display.set_caption('3d')
+running = True
+# --------------------------------------- Main Loop ---------------------------------------
+while running:
+    mouse = pygame.mouse.get_pos()  # puts the mouse position into a 2d tuple
+
+    # ------------------------------------- input handling -------------------------------------
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+            break
+        # ------------------------------------ mouse click actions ------------------------------------
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            pass
+        if event.type == pygame.MOUSEBUTTONUP:  # releasing the hold
+            pass
+        # ------------------------------------ key press actions ------------------------------------
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_q:
+                taZ +=10
+            if event.key == pygame.K_e:
+                taZ -=10
+            if event.key == pygame.K_w:
+                taX -= 10
+            if event.key == pygame.K_s:
+                taX += 10
+            if event.key == pygame.K_a:
+                taY -= 10
+            if event.key == pygame.K_d:
+                taY += 10
+            amt = 30
+            if event.key == pygame.K_i:
+                cy += amt
+                normLp, Scp = updateCnormal(cx,cy,cz)
+                print(normlp, Scp)
+            if event.key == pygame.K_k:
+                cy -= amt
+                normLp, Scp = updateCnormal(cx,cy,cz)
+            if event.key == pygame.K_j:
+                cx += amt
+                normLp, Scp = updateCnormal(cx,cy,cz)
+            if event.key == pygame.K_l:
+                cx -= amt
+                normLp, Scp = updateCnormal(cx,cy,cz)
+            if event.key == pygame.K_y:
+                cz += amt
+                normLp, Scp = updateCnormal(cx,cy,cz)
+            if event.key == pygame.K_h:
+                cz -= amt
+                normLp, Scp = updateCnormal(cx,cy,cz)
+
+
+    # ---------------------------------------- Updating Parameters ----------------------------------------
+
+    # rotation matrix X
+    cosX = math.cos(dtr(taX))
+    sinX = math.sin(dtr(taX))
+    taX = 0
+    Rx = np.zeros((3,3))
+    Rx[0, 0] = 1
+    Rx[1, 1] = cosX
+    Rx[1, 2] = -sinX
+    Rx[2, 1] = sinX
+    Rx[2, 2] = cosX
+
+    # rotation matrix Y
+    cosY = math.cos(dtr(taY))
+    sinY = math.sin(dtr(taY))
+    taY = 0
+    Ry = np.zeros((3, 3))
+    Ry[1, 1] = 1
+    Ry[0, 0] = cosY
+    Ry[0, 2] = sinY
+    Ry[2, 0] = -sinY
+    Ry[2, 2] = cosY
+
+    # rotation matrix Z
+    cosZ = math.cos(dtr(taZ))
+    sinZ = math.sin(dtr(taZ))
+    taZ = 0
+    Rz = np.zeros((3, 3))
+    Rz[2, 2] = 1
+    Rz[0, 0] = cosZ
+    Rz[0, 1] = -sinZ
+    Rz[1, 0] = sinZ
+    Rz[1, 1] = cosZ
+
+    # applying the final rotation
+    RM = np.matmul(Ry, Rx)
+    RM = np.matmul(Rz, RM)
+    A = np.matmul(RM, A.transpose()).transpose()
+    B = np.matmul(RM, B.transpose()).transpose()
+    C = np.matmul(RM, C.transpose()).transpose()
+    D = np.matmul(RM, D.transpose()).transpose()
+
+    s1 = (A, B, C)
+    s2 = (A, B, D)
+    s3 = (B, C, D)
+    s4 = (C, A, D)
+    sL = [s1, s2, s3, s4]
+    # calculating which sides are the closest
+    minHold = []
+    for i, p in enumerate(sL):
+        v1 = p[0]-p[1]
+        v2 = p[0]-p[2]
+        norml = np.cross(v1, v2)
+        norml /= np.linalg.norm(norml)
+        Sc = np.dot(norml, -p[0])
+        minHold.append([i, abs(np.dot(cP[0], norml) - Sc)])
+    minHold.sort(key=lambda x: x[1])
+    minHold = minHold[::-1]
+    # ---------------------------------------- Rendering ----------------------------------------
+    surface.fill((0,0,0))
+
+    pA = cts(project(A))
+    pB = cts(project(B))
+    pC = cts(project(C))
+    pD = cts(project(D))
+    Ps1 = (pA, pB, pC) # white
+    Ps2 = (pA, pB, pD) # red
+    Ps3 = (pB, pC, pD) # blue
+    Ps4 = (pC, pA, pD) # green
+    PsL = [Ps1, Ps2, Ps3, Ps4]
+    for i in range(4):
+        pygame.draw.polygon(surface, cL[minHold[i][0]], PsL[minHold[i][0]], width=0)
+
+    pygame.display.flip()
